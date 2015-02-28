@@ -129,8 +129,8 @@ import org.h2.table.IndexColumn;
 import org.h2.table.RangeTable;
 import org.h2.table.Table;
 import org.h2.table.TableFilter;
-import org.h2.table.TableView;
 import org.h2.table.TableFilter.TableFilterVisitor;
+import org.h2.table.TableView;
 import org.h2.util.MathUtils;
 import org.h2.util.New;
 import org.h2.util.StatementBuilder;
@@ -909,6 +909,9 @@ public class Parser {
         } else if (readIf("SERVER_ENCODING")) {
             // for PostgreSQL compatibility
             buff.append("'UTF8' AS SERVER_ENCODING FROM DUAL");
+        } else if (readIf("INTEGER_DATETIMES")) {
+            // for PostgreSQL compatibility
+            buff.append("false AS INTEGER_DATETIMES FROM DUAL");
         } else if (readIf("TABLES")) {
             // for MySQL compatibility
             String schema = Constants.SCHEMA_MAIN;

@@ -28,6 +28,8 @@ import java.sql.Types;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.h2.command.CommandInterface;
 import org.h2.engine.ConnectionInfo;
@@ -49,6 +51,12 @@ import org.h2.value.CaseInsensitiveMap;
  * One server thread is opened for each client.
  */
 public class PgServerThread implements Runnable {
+    private static final Pattern CLIENT_ENCODING_PATTERN = Pattern.compile("^set\\s+client_encoding\\s*(?:\\sto\\s|=)\\s*'([^']+)'");
+    private static final CaseInsensitiveMap<String> pgEncodingMap = new CaseInsensitiveMap<String>() {{
+        put("Unicode", "UTF-8");
+        put("UTF8", "UTF-8");
+    }};
+
     private final PgServer server;
     private Socket socket;
     private Connection conn;
@@ -436,7 +444,11 @@ public class PgServerThread implements Runnable {
         String lower = StringUtils.toLowerEnglish(s);
         if (lower.startsWith("show max_identifier_length")) {
             s = "CALL 63";
-        } else if (lower.startsWith("set client_encoding to")) {
+        }
+
+        Matcher m = CLIENT_ENCODING_PATTERN.matcher(lower);
+        if (m.matches()) {
+            clientEncoding = m.group(1);
             s = "set DATESTYLE ISO";
         }
         // s = StringUtils.replaceAll(s, "i.indkey[ia.attnum-1]", "0");
@@ -546,10 +558,8 @@ public class PgServerThread implements Runnable {
     }
 
     private String getEncoding() {
-        if ("UNICODE".equals(clientEncoding)) {
-            return "UTF-8";
-        }
-        return clientEncoding;
+        String encoding = pgEncodingMap.get(clientEncoding);
+        return encoding != null ? encoding : clientEncoding;
     }
 
     private void setParameter(PreparedStatement prep,

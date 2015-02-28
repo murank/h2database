@@ -355,10 +355,22 @@ public class PgServerThread implements Runnable {
                 boolean result = prep.execute();
                 if (result) {
                     try {
+                        final int[] resultColumnFormat = p.resultColumnFormat;
+
                         ResultSet rs = prep.getResultSet();
                         // the meta-data is sent in the prior 'Describe'
                         while (rs.next()) {
-                            sendDataRow(rs);
+                            sendDataRow(rs, new FormatSelector() {
+                                @Override
+                                public boolean formatAsText(int column, int pgType) {
+                                    int index = column - 1;  // 0-based column index
+                                    if (index < resultColumnFormat.length) {
+                                        return resultColumnFormat[index] == 0;
+                                    } else {
+                                        return resultColumnFormat[0] == 0;
+                                    }
+                                }
+                            });
                         }
                         sendCommandComplete(prep, 0);
                     } catch (Exception e) {
@@ -404,7 +416,12 @@ public class PgServerThread implements Runnable {
                         try {
                             sendRowDescription(meta);
                             while (rs.next()) {
-                                sendDataRow(rs);
+                                sendDataRow(rs, new FormatSelector() {
+                                    @Override
+                                    public boolean formatAsText(int column, int pgType) {
+                                        return PgServerThread.formatAsText(pgType);
+                                    }
+                                });
                             }
                             sendCommandComplete(stat, 0);
                         } catch (Exception e) {
@@ -489,20 +506,21 @@ public class PgServerThread implements Runnable {
         sendMessage();
     }
 
-    private void sendDataRow(ResultSet rs) throws Exception {
+    private void sendDataRow(ResultSet rs, FormatSelector selector) throws Exception {
         ResultSetMetaData metaData = rs.getMetaData();
         int columns = metaData.getColumnCount();
         startMessage('D');
         writeShort(columns);
         for (int i = 1; i <= columns; i++) {
-            writeDataColumn(rs, i, PgServer.convertType(metaData.getColumnType(i)));
+            writeDataColumn(rs, i, PgServer.convertType(metaData.getColumnType(i)), selector);
         }
         sendMessage();
     }
 
-    private void writeDataColumn(ResultSet rs, int column, int pgType)
+    private void writeDataColumn(ResultSet rs, int column, int pgType, FormatSelector selector)
             throws Exception {
-        if (formatAsText(pgType)) {
+
+        if (selector.formatAsText(column, pgType)) {
             // plain text
             switch (pgType) {
             case PgServer.PG_TYPE_BOOL:
@@ -1032,5 +1050,14 @@ public class PgServerThread implements Runnable {
          * The prepared object.
          */
         Prepared prep;
+    }
+
+    /**
+     * Select format codes for result columns.
+     */
+    static abstract class FormatSelector {
+
+        public abstract boolean formatAsText(int column, int pgType);
+
     }
 }

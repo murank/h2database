@@ -912,6 +912,11 @@ public class Parser {
         } else if (readIf("INTEGER_DATETIMES")) {
             // for PostgreSQL compatibility
             buff.append("false AS INTEGER_DATETIMES FROM DUAL");
+        } else if (readIf("SEARCH_PATH")) {
+            // for PostgreSQL compatibility
+            buff.append("'");
+            buff.append(StringUtils.arrayCombine(session.getSchemaSearchPath(), ','));
+            buff.append("' AS SEARCH_PATH FROM DUAL");
         } else if (readIf("TABLES")) {
             // for MySQL compatibility
             String schema = Constants.SCHEMA_MAIN;

@@ -28,6 +28,7 @@ import org.h2.command.Command;
 import org.h2.command.Parser;
 import org.h2.engine.Constants;
 import org.h2.engine.Database;
+import org.h2.engine.DbObject;
 import org.h2.engine.Mode;
 import org.h2.engine.Session;
 import org.h2.message.DbException;
@@ -106,7 +107,7 @@ public class Function extends Expression implements FunctionCall {
     public static final int DATABASE = 150, USER = 151, CURRENT_USER = 152,
             IDENTITY = 153, SCOPE_IDENTITY = 154, AUTOCOMMIT = 155,
             READONLY = 156, DATABASE_PATH = 157, LOCK_TIMEOUT = 158,
-            DISK_SPACE_USED = 159;
+            DISK_SPACE_USED = 159, OBJ_DESCRIPTION = 160;
 
     public static final int IFNULL = 200, CASEWHEN = 201, CONVERT = 202,
             CAST = 203, COALESCE = 204, NULLIF = 205, CASE = 206,
@@ -461,6 +462,8 @@ public class Function extends Expression implements FunctionCall {
                 VAR_ARGS, Value.NULL);
         addFunctionNotDeterministic("DISK_SPACE_USED", DISK_SPACE_USED,
                 1, Value.LONG);
+        addFunction("OBJ_DESCRIPTION", OBJ_DESCRIPTION,
+                1, Value.STRING);
         addFunction("H2VERSION", H2VERSION, 0, Value.STRING);
 
         // TableFunction
@@ -928,6 +931,14 @@ public class Function extends Expression implements FunctionCall {
         case DISK_SPACE_USED:
             result = ValueLong.get(getDiskSpaceUsed(session, v0));
             break;
+        case OBJ_DESCRIPTION: {
+            int oid = v0.getInt();
+
+            DbObject obj = database.findDbObject(oid);
+            String comment = (obj != null ? obj.getComment() : null);
+            result = (comment != null ? ValueString.get(comment) : ValueNull.INSTANCE);
+            break;
+        }
         case CAST:
         case CONVERT: {
             v0 = v0.convertTo(dataType);

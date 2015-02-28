@@ -1102,6 +1102,21 @@ public class Database implements DataHandler {
     }
 
     /**
+     * Get db object with the given objectId if it exists, or null if not.
+     *
+     * @param objectId
+     * @return the db object or null
+     */
+    public DbObject findDbObject(int id) {
+        for (SchemaObject obj: getAllSchemaObjects()) {
+            if (obj.getId() == id) {
+                return obj;
+            }
+        }
+        return null;
+    }
+
+    /**
      * Create a session for the given user.
      *
      * @param user the user

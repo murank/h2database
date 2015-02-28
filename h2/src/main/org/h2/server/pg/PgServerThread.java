@@ -317,6 +317,14 @@ public class PgServerThread implements Runnable {
                     sendErrorResponse("Prepared not found: " + name);
                 } else {
                     sendParameterDescription(p);
+
+                    PreparedStatement prep = p.prep;
+                    try {
+                        ResultSetMetaData meta = prep.getMetaData();
+                        sendRowDescription(meta);
+                    } catch (Exception e) {
+                        sendErrorResponse(e);
+                    }
                 }
             } else if (type == 'P') {
                 Portal p = portals.get(name);

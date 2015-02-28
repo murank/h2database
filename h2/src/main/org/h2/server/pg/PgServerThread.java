@@ -577,6 +577,10 @@ public class PgServerThread implements Runnable {
                     write(data);
                 }
                 break;
+            case PgServer.PG_TYPE_BOOL:
+                writeInt(1);
+                dataOut.writeByte(rs.getBoolean(column) ? 1 : 0);
+                break;
 
             default: throw new IllegalStateException("output binary format is undefined");
             }

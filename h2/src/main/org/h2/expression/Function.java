@@ -372,6 +372,9 @@ public class Function extends Expression implements FunctionCall {
         // system
         addFunctionNotDeterministic("DATABASE", DATABASE,
                 0, Value.STRING);
+        // same as DATABASE
+        addFunctionNotDeterministic("CURRENT_DATABASE", DATABASE,
+                0, Value.STRING);
         addFunctionNotDeterministic("USER", USER,
                 0, Value.STRING);
         addFunctionNotDeterministic("CURRENT_USER", CURRENT_USER,

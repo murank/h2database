@@ -235,6 +235,73 @@ and i.ordinal_position = 1
 and 1=0;
 grant select on pg_catalog.pg_index to PUBLIC;
 
+
+create view pg_catalog.pg_constraint -- (conname, connamespace, contype, condeferrable, condeferred, conrelid, contypid, confrelid, confupdtype, confdeltype, confmatchtype, conkey, confkey, conbin, consrc)
+as
+select
+    c.constraint_name conname,
+    (select id from INFORMATION_SCHEMA.schemata where schema_name = constraint_schema) connamespace,
+    case constraint_type when 'PRIMARY KEY' then 'p' else 'u' end contype,
+    false condeferrable,
+    false condeferred,
+    t.id conrelid,
+    0 contypid,
+    0 confrelid,
+    'a' confupdtype,
+    'a' confdeltype,
+    's' confmatchtype,
+    (select array_agg(t.id*10000 + col.ordinal_position)
+    from INFORMATION_SCHEMA.indexes i, INFORMATION_SCHEMA.columns col
+    where i.table_schema = c.table_schema
+    and i.table_name = c.table_name
+    and i.constraint_name = c.constraint_name
+    and col.table_schema = i.table_schema
+    and col.table_name = i.table_name
+    and col.column_name = i.column_name) conkey,
+    null confkey,
+    null conbin,
+    null consrc
+from INFORMATION_SCHEMA.constraints c, INFORMATION_SCHEMA.tables t
+where c.constraint_type in ('PRIMARY KEY', 'UNIQUE')
+and c.table_schema = t.table_schema
+and c.table_name = t.table_name
+union all
+select
+    c.constraint_name conname,
+    (select id from INFORMATION_SCHEMA.schemata where schema_name = constraint_schema) connamespace,
+    'r' contype,
+    false condeferrable,
+    false condeferred,
+    t.id conrelid,
+    0 contypid,
+    (select id from INFORMATION_SCHEMA.tables t where t.table_schema = r.pktable_schema and t.table_name = r.pktable_name) confrelid,
+    case r.update_rule when 0 then 'c' when 1 then 'r' when 2 then 'n' else 'd' end confupdtype,
+    case r.delete_rule when 0 then 'c' when 1 then 'r' when 2 then 'n' else 'd' end confdeltype,
+    's' confmatchtype,
+    (select array_agg(ft.id*10000 + col.ordinal_position)
+    from INFORMATION_SCHEMA.columns col, INFORMATION_SCHEMA.tables ft
+    where col.table_schema = r.fktable_schema
+    and col.table_name = r.fktable_name
+    and col.column_name = r.fkcolumn_name
+	and col.table_schema = ft.table_schema
+	and col.table_name = ft.table_name) conkey,
+    (select array_agg(pt.id*10000 + col.ordinal_position)
+    from INFORMATION_SCHEMA.columns col, INFORMATION_SCHEMA.tables pt
+    where col.table_schema = r.pktable_schema
+    and col.table_name = r.pktable_name
+    and col.column_name = r.pkcolumn_name
+    and col.table_schema = pt.table_schema
+    and col.table_name = pt.table_name) confkey,
+    null conbin,
+    null consrc
+from INFORMATION_SCHEMA.constraints c, INFORMATION_SCHEMA.cross_references r, INFORMATION_SCHEMA.tables t
+where c.constraint_type = 'REFERENTIAL'
+and c.constraint_name = r.fk_name
+and r.fktable_schema = t.table_schema
+and r.fktable_name = t.table_name
+group by c.constraint_catalog, c.constraint_schema, c.constraint_name;
+grant select on pg_catalog.pg_constraint to PUBLIC;
+
 drop alias if exists pg_get_indexdef;
 create alias pg_get_indexdef for "org.h2.server.pg.PgServer.getIndexColumn";
 

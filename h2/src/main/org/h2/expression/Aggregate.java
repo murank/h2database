@@ -126,6 +126,11 @@ public class Aggregate extends Expression {
      */
     static final int HISTOGRAM = 16;
 
+    /**
+     * The aggregate type for ARRAY_AGG(expression).
+     */
+    static final int ARRAY_AGG = 17;
+
     private static final HashMap<String, Integer> AGGREGATES = New.hashMap();
 
     private final int type;
@@ -182,6 +187,8 @@ public class Aggregate extends Expression {
         addAggregate("HISTOGRAM", HISTOGRAM);
         addAggregate("BIT_OR", BIT_OR);
         addAggregate("BIT_AND", BIT_AND);
+        // PostgreSQL compatibility
+        addAggregate("ARRAY_AGG", ARRAY_AGG);
     }
 
     private static void addAggregate(String name, int type) {
@@ -453,6 +460,9 @@ public class Aggregate extends Expression {
                 throw DbException.get(ErrorCode.SUM_OR_AVG_ON_WRONG_DATATYPE_1, getSQL());
             }
             break;
+        case ARRAY_AGG:
+            dataType = Value.ARRAY;
+            break;
         default:
             DbException.throwInternalError("type=" + type);
         }
@@ -563,6 +573,9 @@ public class Aggregate extends Expression {
             break;
         case BIT_OR:
             text = "BIT_OR";
+            break;
+        case ARRAY_AGG:
+            text = "ARRAY_AGG";
             break;
         default:
             throw DbException.throwInternalError("type=" + type);

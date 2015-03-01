@@ -30,6 +30,8 @@ abstract class AggregateData {
             return new AggregateDataCount();
         } else if (aggregateType == Aggregate.HISTOGRAM) {
             return new AggregateDataHistogram();
+        } else if (aggregateType == Aggregate.ARRAY_AGG) {
+            return new AggregateDataArrayAgg();
         } else {
             return new AggregateDataDefault(aggregateType);
         }

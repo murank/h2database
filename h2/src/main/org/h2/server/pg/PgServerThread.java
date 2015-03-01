@@ -16,6 +16,8 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.io.StringReader;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.net.Socket;
 import java.sql.Connection;
 import java.sql.ParameterMetaData;
@@ -27,6 +29,7 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -42,6 +45,7 @@ import org.h2.mvstore.DataUtils;
 import org.h2.util.IOUtils;
 import org.h2.util.JdbcUtils;
 import org.h2.util.MathUtils;
+import org.h2.util.New;
 import org.h2.util.ScriptReader;
 import org.h2.util.StringUtils;
 import org.h2.util.Utils;
@@ -581,10 +585,72 @@ public class PgServerThread implements Runnable {
                 writeInt(1);
                 dataOut.writeByte(rs.getBoolean(column) ? 1 : 0);
                 break;
+            case PgServer.PG_TYPE_NUMERIC:
+                BigDecimal decimal = rs.getBigDecimal(column);
+                if (decimal == null) {
+                    writeInt(-1);
+                    break;
+                }
+
+                final int NUMERIC_POS = 0x0000;
+                final int NUMERIC_NEG = 0x4000;
+                final int DEC_DIGITS = 4;
+
+                int dscale = Math.max(decimal.scale(), 0);
+
+                int dweight = (decimal.precision() - decimal.scale() - 1);
+                int weight;
+                if (dweight >= 0) {
+                    weight = (dweight + 1 + DEC_DIGITS - 1) / DEC_DIGITS - 1;
+                } else {
+                    weight = -((-dweight - 1) / DEC_DIGITS + 1);
+                }
+
+                BigInteger unscaledValue = decimal.unscaledValue();
+                List<Integer> digits = splitNumricValue(unscaledValue);
+                int sign = (decimal.signum() >= 0 ? NUMERIC_POS : NUMERIC_NEG);
+
+                // sum of the size of ndigits, weight, sign, dscale, digits[]
+                writeInt(2 + 2 + 2 + 2 + 2 * digits.size());
+                writeShort(digits.size());    // ndigits
+                writeShort(weight);           // weight
+                writeShort(sign);             // sign
+                writeShort(dscale);           // dscale
+
+                // digits
+                for (Integer s: digits) {
+                    writeShort(s);
+                }
+
+                break;
 
             default: throw new IllegalStateException("output binary format is undefined");
             }
         }
+    }
+
+    private List<Integer> splitNumricValue(BigInteger value) {
+        final BigInteger NBASE = BigInteger.valueOf(10000);    // see also: https://github.com/postgres/postgres/blob/master/src/backend/utils/adt/numeric.c
+
+        List<Integer> digits = New.arrayList();
+
+        BigInteger target = value;
+        while(true) {
+            BigInteger[] result = target.divideAndRemainder(NBASE);
+            BigInteger quotient = result[0];
+            BigInteger reminder = result[1];
+
+            digits.add(reminder.intValue());
+
+            if (quotient.equals(BigInteger.ZERO)) {
+                break;
+            }
+
+            target = quotient;
+        }
+
+        Collections.reverse(digits);
+        return digits;
     }
 
     private String getEncoding() {

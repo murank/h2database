@@ -153,15 +153,19 @@ create table pg_catalog.pg_proc(
 grant select on pg_catalog.pg_proc to PUBLIC;
 
 create table pg_catalog.pg_trigger(
-    oid int,
-    tgconstrrelid int,
+    tgrelid int,
+    tgname varchar_ignorecase,
     tgfoid int,
-    tgargs int,
-    tgnargs int,
+    tgtype int,
+    tgenabled boolean,
+    tgisconstraint boolean,
+    tgconstrname varchar_ignorecase,
+    tgconstrrelid int,
     tgdeferrable boolean,
     tginitdeferred boolean,
-    tgconstrname varchar_ignorecase,
-    tgrelid int
+    tgnargs int,
+    tgattr array,
+    tgargs bytea
 );
 grant select on pg_catalog.pg_trigger to PUBLIC;
 

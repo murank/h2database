@@ -1042,6 +1042,21 @@ public class Database implements DataHandler {
     }
 
     /**
+     * Get the table if it exists, or null if not.
+     *
+     * @param id the objectId of the table
+     * @return the table or null
+     */
+    public Table findTable(int id) {
+        for (Table t: getAllTablesAndViews(true)) {
+            if (t.getId() == id) {
+                return t;
+            }
+        }
+        return null;
+    }
+
+    /**
      * Get the schema if it exists, or null if not.
      *
      * @param schemaName the name of the schema

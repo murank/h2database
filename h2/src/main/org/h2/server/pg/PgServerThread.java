@@ -26,7 +26,9 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.sql.Types;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -622,6 +624,28 @@ public class PgServerThread implements Runnable {
                     writeShort(s);
                 }
 
+                break;
+            case PgServer.PG_TYPE_TIMESTAMP_NO_TMZONE:
+                Timestamp time = rs.getTimestamp(column);
+                if (time == null) {
+                    writeInt(-1);
+                    break;
+                }
+
+                double secondsFrom19700101 = (double)time.getTime() / 1000.0 + (double)time.getNanos() / (1000.0 * 1000.0 * 1000.0);
+
+                Calendar epochTime = Calendar.getInstance();
+                epochTime.clear();
+
+                Calendar millenniumTime = Calendar.getInstance();
+                millenniumTime.clear();
+                millenniumTime.set(2000, Calendar.JANUARY, 1, 0, 0, 0);
+
+                double offsetInSeconds = (double)(millenniumTime.getTime().getTime() - epochTime.getTime().getTime()) / 1000.0;
+                double secondsFrom20000101 = secondsFrom19700101 - offsetInSeconds;
+
+                writeInt(8);
+                dataOut.writeDouble(secondsFrom20000101);
                 break;
 
             default: throw new IllegalStateException("output binary format is undefined");

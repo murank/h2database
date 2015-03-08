@@ -250,7 +250,7 @@ select
     'a' confupdtype,
     'a' confdeltype,
     's' confmatchtype,
-    (select array_agg(t.id*10000 + col.ordinal_position)
+    (select array_agg(col.ordinal_position)
     from INFORMATION_SCHEMA.indexes i, INFORMATION_SCHEMA.columns col
     where i.table_schema = c.table_schema
     and i.table_name = c.table_name
@@ -278,14 +278,14 @@ select
     case r.update_rule when 0 then 'c' when 1 then 'r' when 2 then 'n' else 'd' end confupdtype,
     case r.delete_rule when 0 then 'c' when 1 then 'r' when 2 then 'n' else 'd' end confdeltype,
     's' confmatchtype,
-    (select array_agg(ft.id*10000 + col.ordinal_position)
+    (select array_agg(col.ordinal_position)
     from INFORMATION_SCHEMA.columns col, INFORMATION_SCHEMA.tables ft
     where col.table_schema = r.fktable_schema
     and col.table_name = r.fktable_name
     and col.column_name = r.fkcolumn_name
 	and col.table_schema = ft.table_schema
 	and col.table_name = ft.table_name) conkey,
-    (select array_agg(pt.id*10000 + col.ordinal_position)
+    (select array_agg(col.ordinal_position)
     from INFORMATION_SCHEMA.columns col, INFORMATION_SCHEMA.tables pt
     where col.table_schema = r.pktable_schema
     and col.table_name = r.pktable_name

@@ -280,7 +280,7 @@ public class PgServerThread implements Runnable {
             int paramCount = readShort();
             try {
                 for (int i = 0; i < paramCount; i++) {
-                    setParameter(prep.prep, prep.paramType[i], i, formatCodes);
+                    setParameter(prep.prep, (prep.paramType.length > i ? prep.paramType[i] : PgServer.PG_TYPE_VARCHAR), i, formatCodes);
                 }
             } catch (Exception e) {
                 sendErrorResponse(e);
@@ -775,7 +775,7 @@ public class PgServerThread implements Runnable {
             writeShort(count);
             for (int i = 0; i < count; i++) {
                 int type;
-                if (p.paramType != null && p.paramType[i] != 0) {
+                if (p.paramType != null && p.paramType.length > i && p.paramType[i] != 0) {
                     type = p.paramType[i];
                 } else {
                     type = PgServer.PG_TYPE_VARCHAR;

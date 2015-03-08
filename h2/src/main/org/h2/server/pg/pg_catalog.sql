@@ -302,6 +302,21 @@ and r.fktable_name = t.table_name
 group by c.constraint_catalog, c.constraint_schema, c.constraint_name;
 grant select on pg_catalog.pg_constraint to PUBLIC;
 
+create view INFORMATION_SCHEMA.table_constraints -- (constraint_catalog, constraint_schema, constraint_name, table_catalog, table_schema, table_name, constraint_type, is_deferrable, initially_deferred)
+as
+select
+  constraint_catalog,
+  constraint_schema,
+  constraint_name,
+  table_catalog,
+  table_schema,
+  table_name,
+  constraint_type,
+  'NO' is_deferrable,
+  'NO' initially_deferred
+from INFORMATION_SCHEMA.constraints;
+grant select on INFORMATION_SCHEMA.table_constraints to PUBLIC;
+
 drop alias if exists pg_get_indexdef;
 create alias pg_get_indexdef for "org.h2.server.pg.PgServer.getIndexColumn";
 

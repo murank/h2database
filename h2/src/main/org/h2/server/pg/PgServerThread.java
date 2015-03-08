@@ -823,7 +823,7 @@ public class PgServerThread implements Runnable {
             startMessage('T');
             writeShort(columns);
             for (int i = 0; i < columns; i++) {
-                writeString(StringUtils.toLowerEnglish(names[i]));
+                writeString(names[i]);
                 // object ID
                 writeInt(0);
                 // attribute number of the column

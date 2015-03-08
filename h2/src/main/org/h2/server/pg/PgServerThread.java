@@ -19,6 +19,7 @@ import java.io.StringReader;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.Socket;
+import java.sql.Array;
 import java.sql.Connection;
 import java.sql.ParameterMetaData;
 import java.sql.PreparedStatement;
@@ -533,7 +534,6 @@ public class PgServerThread implements Runnable {
 
     private void writeDataColumn(ResultSet rs, int column, int pgType, FormatSelector selector)
             throws Exception {
-
         if (selector.formatAsText(column, pgType)) {
             // plain text
             switch (pgType) {
@@ -541,6 +541,21 @@ public class PgServerThread implements Runnable {
                 writeInt(1);
                 dataOut.writeByte(rs.getBoolean(column) ? 't' : 'f');
                 break;
+            case PgServer.PG_TYPE_TEXTARRAY:
+            case PgServer.PG_TYPE_INT2VECTOR: {
+                 Array arr = rs.getArray(column);
+                 if (arr == null) {
+                      writeInt(-1);
+                      break;
+                 }
+
+                 String str = arrayToStringFormat(arr);
+                byte[] data = str.getBytes(getEncoding());
+
+                  writeInt(data.length);
+                  write(data);
+                break;
+            }
             default:
                 String s = rs.getString(column);
                 if (s == null) {
@@ -651,6 +666,51 @@ public class PgServerThread implements Runnable {
             default: throw new IllegalStateException("output binary format is undefined");
             }
         }
+    }
+
+    private String arrayToStringFormat(Array arr) throws SQLException {
+         List<String> values = New.arrayList();
+         switch (arr.getBaseType()) {
+             case Types.VARCHAR:
+             case Types.CLOB:
+             case Types.CHAR:
+                  for (String value: (String[])arr.getArray()) {
+                       if (value == null) {
+                            values.add("NULL");
+                       } else {
+                            values.add("\"" + value.replaceAll("(\\|\")", "\\$1") + "\"");
+                       }
+                  }
+                  break;
+             case Types.BOOLEAN:
+                  for (Boolean value: (Boolean[])arr.getArray()) {
+                       if (value == null) {
+                            values.add("NULL");
+                       } else {
+                            values.add(value ? "t" : "f");
+                       }
+                  }
+                  break;
+             case Types.ARRAY:
+                  for (Array value: (Array[])arr.getArray()) {
+                       if (value == null) {
+                            values.add("NULL");
+                       } else {
+                            values.add(arrayToStringFormat(value));
+                       }
+                  }
+                  break;
+             default:
+                  for (Object value: (Object[])arr.getArray()) {
+                       if (value == null) {
+                            values.add("NULL");
+                       } else {
+                            values.add(value.toString());
+                       }
+                  }
+         }
+
+         return StringUtils.arrayCombine(values.toArray(new String[values.size()]), ' ');
     }
 
     private List<Integer> splitNumricValue(BigInteger value) {

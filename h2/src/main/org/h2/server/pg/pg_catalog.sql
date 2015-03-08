@@ -218,23 +218,20 @@ grant select on pg_catalog.pg_attribute to PUBLIC;
 create view pg_catalog.pg_index -- (oid, indexrelid, indrelid, indisclustered, indisunique, indisprimary, indexprs, indkey, indpred)
 as
 select
-    i.id oid,
-    i.id indexrelid,
+    min(i.id) oid,
+    min(i.id) indexrelid,
     t.id indrelid,
     false indisclustered,
-    not non_unique indisunique,
-    primary_key indisprimary,
+    not bool_and(non_unique) indisunique,
+    bool_and(primary_key) indisprimary,
     cast('' as varchar_ignorecase) indexprs,
-    cast(1 as array) indkey,
+    array_agg(i.ordinal_position) indkey,
     null indpred
 from INFORMATION_SCHEMA.indexes i, INFORMATION_SCHEMA.tables t
 where i.table_schema = t.table_schema
 and i.table_name = t.table_name
-and i.ordinal_position = 1
--- workaround for MS Access problem opening tables with primary key
-and 1=0;
+group by i.table_schema, i.table_name, i.index_name;
 grant select on pg_catalog.pg_index to PUBLIC;
-
 
 create view pg_catalog.pg_constraint -- (conname, connamespace, contype, condeferrable, condeferred, conrelid, contypid, confrelid, confupdtype, confdeltype, confmatchtype, conkey, confkey, conbin, consrc)
 as

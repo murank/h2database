@@ -16,6 +16,7 @@ import org.h2.table.ColumnResolver;
 import org.h2.table.TableFilter;
 import org.h2.util.StringUtils;
 import org.h2.value.Value;
+import org.h2.value.ValueArray;
 import org.h2.value.ValueBoolean;
 import org.h2.value.ValueNull;
 
@@ -55,11 +56,12 @@ public class ConditionInSelect extends Condition {
             if (!session.getDatabase().getSettings().optimizeInSelect) {
                 return getValueSlow(rows, l);
             }
+            int dataType = rows.getColumnType(0);
             if (all || (compareType != Comparison.EQUAL &&
-                    compareType != Comparison.EQUAL_NULL_SAFE)) {
+                    compareType != Comparison.EQUAL_NULL_SAFE)
+                    || (dataType == Value.ARRAY)) {
                 return getValueSlow(rows, l);
             }
-            int dataType = rows.getColumnType(0);
             if (dataType == Value.NULL) {
                 return ValueBoolean.get(false);
             }
@@ -81,21 +83,24 @@ public class ConditionInSelect extends Condition {
         // row, and if l is not null
         boolean hasNull = false;
         boolean result = all;
+        loop_rows:
         while (rows.next()) {
             boolean value;
-            Value r = rows.currentRow()[0];
-            if (r == ValueNull.INSTANCE) {
-                value = false;
-                hasNull = true;
-            } else {
-                value = Comparison.compareNotNull(database, l, r, compareType);
-            }
-            if (!value && all) {
-                result = false;
-                break;
-            } else if (value && !all) {
-                result = true;
-                break;
+            Value data = rows.currentRow()[0];
+            for (Value r: (data.getType() == Value.ARRAY ? ((ValueArray) data).getList() : new Value[] { data })) {
+                if (r == ValueNull.INSTANCE) {
+                    value = false;
+                    hasNull = true;
+                } else {
+                    value = Comparison.compareNotNull(database, l, r, compareType);
+                }
+                if (!value && all) {
+                    result = false;
+                    break loop_rows;
+                } else if (value && !all) {
+                    result = true;
+                    break loop_rows;
+                }
             }
         }
         if (!result && hasNull) {

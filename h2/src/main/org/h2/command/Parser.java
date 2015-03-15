@@ -2164,13 +2164,51 @@ public class Parser {
                 read();
                 if (readIf("ALL")) {
                     read("(");
-                    Query query = parseSelect();
+                    Query query;
+                    if (readIf("SELECT")) {
+                        query = parseSelect();
+                    } else {
+                        Select command = new Select(session);
+
+                        Expression expr = readExpression();
+                        ArrayList<Expression> expressions = New.arrayList();
+                        expressions.add(expr);
+                        command.setExpressions(expressions);
+
+                        Table dual = getDualTable(false);
+                        TableFilter filter = new TableFilter(session, dual, null,
+                                rightsChecked, currentSelect);
+                        command.addTableFilter(filter, true);
+                        command.setParameterList(new ArrayList<Parameter>());
+                        command.init();
+
+                        query = command;
+                    }
                     r = new ConditionInSelect(database, r, query, true,
                             compareType);
                     read(")");
                 } else if (readIf("ANY") || readIf("SOME")) {
                     read("(");
-                    Query query = parseSelect();
+                    Query query;
+                    if (readIf("SELECT")) {
+                        query = parseSelect();
+                    } else {
+                        Select command = new Select(session);
+
+                        Expression expr = readExpression();
+                        ArrayList<Expression> expressions = New.arrayList();
+                        expressions.add(expr);
+                        command.setExpressions(expressions);
+
+                        Table dual = getDualTable(false);
+                        TableFilter filter = new TableFilter(session, dual, null,
+                                rightsChecked, currentSelect);
+                        command.addTableFilter(filter, true);
+                        command.setParameterList(new ArrayList<Parameter>());
+                        command.init();
+
+                        query = command;
+                    }
                     r = new ConditionInSelect(database, r, query, false,
                             compareType);
                     read(")");

@@ -39,12 +39,18 @@ import java.util.regex.Pattern;
 
 import org.h2.command.CommandInterface;
 import org.h2.engine.ConnectionInfo;
+import org.h2.engine.Database;
+import org.h2.engine.Session;
+import org.h2.engine.SessionInterface;
 import org.h2.engine.SysProperties;
 import org.h2.jdbc.JdbcConnection;
 import org.h2.jdbc.JdbcPreparedStatement;
 import org.h2.jdbc.JdbcStatement;
 import org.h2.message.DbException;
 import org.h2.mvstore.DataUtils;
+import org.h2.schema.Schema;
+import org.h2.table.Column;
+import org.h2.table.Table;
 import org.h2.util.IOUtils;
 import org.h2.util.JdbcUtils;
 import org.h2.util.MathUtils;
@@ -862,6 +868,17 @@ public class PgServerThread implements Runnable {
             int[] types = new int[columns];
             int[] precision = new int[columns];
             String[] names = new String[columns];
+            int[] oid = new int[columns];
+            int[] attnum = new int[columns];
+
+            Database database = null;
+            Session session = null;
+            SessionInterface sessionInterface = ((JdbcConnection) conn).getSession();
+            if (sessionInterface instanceof Session) {
+                session = (Session) sessionInterface;
+                database = session.getDatabase();
+            }
+
             for (int i = 0; i < columns; i++) {
                 String name = meta.getColumnName(i + 1);
                 names[i] = name;
@@ -879,15 +896,32 @@ public class PgServerThread implements Runnable {
                     server.checkType(pgType);
                 }
                 types[i] = pgType;
+
+                oid[i] = 0;
+                attnum[i] = 0;
+                if (database != null) {
+                    String schemaName = meta.getSchemaName(i + 1);
+                    String tableName = meta.getTableName(i + 1);
+                    if (!StringUtils.isNullOrEmpty(schemaName) && !StringUtils.isNullOrEmpty(tableName)) {
+
+                        Schema schema = database.findSchema(schemaName);
+                        Table table = schema.findTableOrView(session, tableName);
+                        oid[i] = table.getId();
+
+                        Column column = table.getColumn(name);
+                        attnum[i] = column.getColumnId() + 1;    // change 0-based index to 1-based index
+                    }
+                }
             }
+
             startMessage('T');
             writeShort(columns);
             for (int i = 0; i < columns; i++) {
                 writeString(names[i]);
                 // object ID
-                writeInt(0);
+                writeInt(oid[i]);
                 // attribute number of the column
-                writeShort(0);
+                writeShort(attnum[i]);
                 // data type
                 writeInt(types[i]);
                 // pg_type.typlen

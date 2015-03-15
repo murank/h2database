@@ -261,7 +261,12 @@ public class DateTimeUtils {
         int s1 = s.indexOf('-', start + 1);
         int s2 = s.indexOf('-', s1 + 1);
         if (s1 <= 0 || s2 <= s1) {
-            throw new IllegalArgumentException(s);
+
+        	s1 = s.indexOf('/', start + 1);
+            s2 = s.indexOf('/', s1 + 1);
+            if (s1 <= 0 || s2 <= s1) {
+                throw new IllegalArgumentException(s);
+            }
         }
         int year = Integer.parseInt(s.substring(start, s1));
         int month = Integer.parseInt(s.substring(s1 + 1, s2));
